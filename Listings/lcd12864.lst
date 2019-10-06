@@ -1,0 +1,509 @@
+C51 COMPILER V9.55   LCD12864                                                              10/05/2019 19:24:19 PAGE 1   
+
+
+C51 COMPILER V9.55, COMPILATION OF MODULE LCD12864
+OBJECT MODULE PLACED IN .\Objects\lcd12864.obj
+COMPILER INVOKED BY: d:\Keil_v5\C51\BIN\C51.EXE lib\lcd12864.c COMPACT OPTIMIZE(8,SPEED) BROWSE INCDIR(.\lib) DEFINE(CHA
+                    -R_CODE) DEBUG OBJECTEXTEND PRINT(.\Listings\lcd12864.lst) TABS(2) OBJECT(.\Objects\lcd12864.obj)
+
+line level    source
+
+   1          #include <STC15F2K60S2.H>
+   2          #include <intrins.h>
+   3          #include <math.h>
+   4          #include <stdio.h>
+   5          #include <stdarg.h>
+   6          #include "lcd12864.h"
+   7          
+   8          
+   9          #define DATA_PORT   P0
+  10          sbit LCD12864_CS   = P3^2;
+  11          sbit LCD12864_RSET = P3^3;
+  12          sbit LCD12864_RS   = P2^6;
+  13          sbit LCD12864_RW   = P2^7;
+  14          sbit LCD12864_RD   = P2^5;
+  15          
+  16          void Lcd_WriteCmd(unsigned char cmd)
+  17          {
+  18   1        LCD12864_CS = 0;
+  19   1        LCD12864_RD = 1;
+  20   1        LCD12864_RS = 0;
+  21   1        LCD12864_RW = 0;
+  22   1        _nop_();
+  23   1        _nop_();
+  24   1        
+  25   1        DATA_PORT = cmd;
+  26   1        _nop_();
+  27   1        _nop_();  
+  28   1        
+  29   1        LCD12864_RW = 1;
+  30   1      }
+  31          
+  32          void Lcd_WriteData(unsigned char dat)
+  33          {
+  34   1        LCD12864_CS = 0;
+  35   1        LCD12864_RD = 1;
+  36   1        LCD12864_RS = 1;
+  37   1        LCD12864_RW = 0;
+  38   1        _nop_();
+  39   1        _nop_();
+  40   1        
+  41   1        DATA_PORT = dat;
+  42   1        _nop_();
+  43   1        _nop_();  
+  44   1        
+  45   1        LCD12864_RW = 1;
+  46   1      }
+  47          
+  48          void Lcd_Init()
+  49          {
+  50   1        unsigned char i;
+  51   1        
+  52   1        LCD12864_RSET = 0;
+  53   1        for(i = 0; i < 100; i ++);
+  54   1        LCD12864_CS = 0;
+C51 COMPILER V9.55   LCD12864                                                              10/05/2019 19:24:19 PAGE 2   
+
+  55   1        LCD12864_RSET = 1;
+  56   1        
+  57   1        Lcd_WriteCmd(0XE2);
+  58   1        for(i = 0; i < 100; i ++);
+  59   1        Lcd_WriteCmd(0XA0);
+  60   1        Lcd_WriteCmd(0XC8);
+  61   1        Lcd_WriteCmd(0XA6);
+  62   1        Lcd_WriteCmd(0XA4);
+  63   1        Lcd_WriteCmd(0XA2);
+  64   1        Lcd_WriteCmd(0XF8);
+  65   1        Lcd_WriteCmd(0X01);
+  66   1        Lcd_WriteCmd(0X81);
+  67   1        Lcd_WriteCmd(0X23);
+  68   1        Lcd_WriteCmd(0X25);
+  69   1        Lcd_WriteCmd(0X2F);
+  70   1        for(i = 0; i <100; i ++);
+  71   1        Lcd_WriteCmd(0X40);
+  72   1        Lcd_WriteCmd(0Xaf);
+  73   1        for(i = 0; i <100; i ++);
+  74   1      }
+  75          
+  76          void Lcd_Clear()
+  77          {
+  78   1        unsigned char i, j;
+  79   1        
+  80   1        for(i = 0; i <8; i ++)
+  81   1        {
+  82   2          Lcd_WriteCmd(0xB0 + i);
+  83   2          Lcd_WriteCmd(0x10);
+  84   2          Lcd_WriteCmd(0x04);
+  85   2          for(j = 0; j < 128; j ++)
+  86   2          {
+  87   3              Lcd_WriteData(0x00);
+  88   3          }
+  89   2        }
+  90   1      }
+  91          
+  92          
+  93          #ifdef  CHAR_CODE
+  94          
+  95          #include"font.h"
+  96          unsigned char Lcd12864_Write16CnCHAR(unsigned char x, unsigned char y, unsigned char *cn)
+  97          {
+  98   1        unsigned char j, x1, x2, wordNum;
+  99   1        
+ 100   1        //--Y的坐标只能从0到7，大于则直接返回--//
+ 101   1        if(y > 7)
+ 102   1        {
+ 103   2          return 0;
+ 104   2        }
+ 105   1      
+ 106   1        //--X的坐标只能从0到128，大于则直接返回--//
+ 107   1        if(x > 128)
+ 108   1        {
+ 109   2          return 0;
+ 110   2        }
+ 111   1        y += 0xB0;     //求取Y坐标的值
+ 112   1        //--设置Y坐标--//
+ 113   1        Lcd_WriteCmd(y);
+ 114   1        while ( *cn != '\0')   //在C语言中字符串结束以‘\0’结尾
+ 115   1        { 
+ 116   2        
+C51 COMPILER V9.55   LCD12864                                                              10/05/2019 19:24:19 PAGE 3   
+
+ 117   2          //--设置Y坐标--//
+ 118   2          Lcd_WriteCmd(y);
+ 119   2      
+ 120   2          x1 = (x >> 4) & 0x0F;   //由于X坐标要两句命令，分高低4位，所以这里先取出高4位
+ 121   2          x2 = x & 0x0F;          //去低四位
+ 122   2          //--设置X坐标--//
+ 123   2          Lcd_WriteCmd(0x10 + x1);   //高4位
+ 124   2          Lcd_WriteCmd(0x04 + x2);  //低4位
+ 125   2      
+ 126   2          for (wordNum=0; wordNum<50; wordNum++)
+ 127   2          {
+ 128   3              //--查询要写的字在字库中的位置--//
+ 129   3            if ((CN16CHAR[wordNum].Index[0] == *cn)
+ 130   3                 &&(CN16CHAR[wordNum].Index[1] == *(cn+1)))
+ 131   3            {
+ 132   4              for (j=0; j<32; j++) //写一个字
+ 133   4              {   
+ 134   5                if (j == 16)   //由于16X16用到两个Y坐标，当大于等于16时，切换坐标
+ 135   5                {
+ 136   6                  //--设置Y坐标--//
+ 137   6                    Lcd_WriteCmd(y + 1);
+ 138   6            
+ 139   6                  //--设置X坐标--//
+ 140   6                  Lcd_WriteCmd(0x10 + x1);   //高4位
+ 141   6                  Lcd_WriteCmd(0x04 + x2);  //低4位
+ 142   6                }
+ 143   5                Lcd_WriteData(CN16CHAR[wordNum].Msk[j]);
+ 144   5              }
+ 145   4              x += 16;
+ 146   4            }//if查到字结束   
+ 147   3          } //for查字结束 
+ 148   2          cn += 2;
+ 149   2        } //while结束
+ 150   1        return 1;
+ 151   1      }
+ 152          
+ 153          static unsigned char Lcd12864_Writechar(unsigned char x, unsigned char y, unsigned char cn)
+ 154          {
+ 155   1        unsigned char x1, x2;
+ 156   1        char j;
+ 157   1        //--Y的坐标只能从0到7，大于则直接返回--//
+ 158   1        if(y > 7)
+ 159   1        {
+ 160   2          return 0;
+ 161   2        }
+ 162   1      
+ 163   1        //--X的坐标只能从0到128，大于则直接返回--//
+ 164   1        if(x > 128)
+ 165   1        {
+ 166   2          return 0;
+ 167   2        } 
+ 168   1        cn = cn - ' ';
+ 169   1        y += 0xB0;     //求取Y坐标的值
+ 170   1        //--设置Y坐标--//
+ 171   1        Lcd_WriteCmd(y);
+ 172   1        //--设置X坐标--//
+ 173   1        x1 = (x >> 4) & 0x0F;   //由于X坐标要两句命令，分高低4位，所以这里先取出高4位
+ 174   1        x2 = x & 0x0F;   
+ 175   1        Lcd_WriteCmd(0x10 + x1);   //高4位
+ 176   1        Lcd_WriteCmd(0x04 + x2);  //低4位
+ 177   1        for (j=0; j<16; j++) //写一个字
+ 178   1        {   
+C51 COMPILER V9.55   LCD12864                                                              10/05/2019 19:24:19 PAGE 4   
+
+ 179   2          if (j == 8)  //
+ 180   2          {
+ 181   3            //--设置Y坐标--//
+ 182   3            Lcd_WriteCmd(y + 1);
+ 183   3            
+ 184   3            //--设置X坐标--//
+ 185   3            Lcd_WriteCmd(0x10 + x1);   //高4位
+ 186   3            Lcd_WriteCmd(0x04 + x2);  //低4位
+ 187   3          }
+ 188   2            Lcd_WriteData(ASCII[cn * 16 + j]);
+ 189   2        }
+ 190   1        return 1; 
+ 191   1      }
+ 192          
+ 193          unsigned char Lcd12864_WriteString(unsigned char x, unsigned char y, unsigned char *str)
+ 194          {
+ 195   1        if(y > 7)
+ 196   1        {
+ 197   2          return 0;
+ 198   2        }
+ 199   1      
+ 200   1        //--X的坐标只能从0到128，大于则直接返回--//
+ 201   1        if(x > 128)
+ 202   1        {
+ 203   2          return 0;
+ 204   2        } 
+ 205   1      
+ 206   1        while(*str != '\0')
+ 207   1        {       
+ 208   2          Lcd12864_Writechar(x,y,*str);
+ 209   2          x+=8;
+ 210   2          str++;
+ 211   2        }
+ 212   1        return 1;
+ 213   1      }
+ 214          
+ 215          unsigned char Lcd12864_WriteNum8(unsigned char x, unsigned char y, unsigned char num)
+ 216          {
+ 217   1        unsigned char x1, x2, wordNum, cnt = 0;
+ 218   1        char j;
+ 219   1        unsigned char tmp_num[3];
+ 220   1        //--Y的坐标只能从0到7，大于则直接返回--//
+ 221   1        if(y > 7)
+ 222   1        {   
+ 223   2          return 0;
+ 224   2        }
+ 225   1      
+ 226   1        //--X的坐标只能从0到128，大于则直接返回--//
+ 227   1        if(x > 128)
+ 228   1        {
+ 229   2          return 0;
+ 230   2        }
+ 231   1        
+ 232   1        if(num > 255)
+ 233   1        {
+ 234   2          Lcd12864_WriteString(x,y,"OverFlow");
+ 235   2          return 0;
+ 236   2        }
+ 237   1        
+ 238   1        for(j = 2; j >= 0; j --)
+ 239   1        {
+ 240   2          tmp_num[j] = num%10;
+C51 COMPILER V9.55   LCD12864                                                              10/05/2019 19:24:19 PAGE 5   
+
+ 241   2          num = num/10;
+ 242   2        }
+ 243   1        
+ 244   1        for(j = 0; j < 3; j ++)
+ 245   1        {
+ 246   2            if(tmp_num[j] == 0)
+ 247   2            {
+ 248   3              cnt = j+1;
+ 249   3            }
+ 250   2            else
+ 251   2              break;
+ 252   2        }
+ 253   1        y += 0xB0;     //求取Y坐标的值
+ 254   1        //--设置Y坐标--//
+ 255   1        Lcd_WriteCmd(y);
+ 256   1        for(wordNum = cnt; wordNum < 3; wordNum ++)
+ 257   1        {
+ 258   2        
+ 259   2          //--设置Y坐标--//
+ 260   2          Lcd_WriteCmd(y);
+ 261   2          x1 = (x >> 4) & 0x0F;   //由于X坐标要两句命令，分高低4位，所以这里先取出高4位
+ 262   2          x2 = x & 0x0F;          //去低四位
+ 263   2          //--设置X坐标--//
+ 264   2          Lcd_WriteCmd(0x10 + x1);   //高4位
+ 265   2          Lcd_WriteCmd(0x04 + x2);  //低4位
+ 266   2      
+ 267   2          for (j=0; j<16; j++) //写一个字
+ 268   2          {   
+ 269   3            if (j == 8)  //
+ 270   3            {
+ 271   4                //--设置Y坐标--//
+ 272   4              Lcd_WriteCmd(y + 1);
+ 273   4            
+ 274   4                //--设置X坐标--//
+ 275   4              Lcd_WriteCmd(0x10 + x1);   //高4位
+ 276   4              Lcd_WriteCmd(0x04 + x2);  //低4位
+ 277   4            }
+ 278   3              Lcd_WriteData(number[16*tmp_num[wordNum] +j]);
+ 279   3          }
+ 280   2          x += 8;   
+ 281   2        }
+ 282   1        return 1;
+ 283   1      }
+ 284          
+ 285          unsigned char Lcd12864_WriteNum16(unsigned char x, unsigned char y, unsigned int num)
+ 286          {
+ 287   1        unsigned char x1, x2, wordNum,cnt= 0;
+ 288   1        char j;
+ 289   1        unsigned char tmp_num[5];
+ 290   1        //--Y的坐标只能从0到7，大于则直接返回--//
+ 291   1        if(y > 7)
+ 292   1        {
+ 293   2          return 0;
+ 294   2        }
+ 295   1      
+ 296   1        //--X的坐标只能从0到128，大于则直接返回--//
+ 297   1        if(x > 128)
+ 298   1        {
+ 299   2          return 0;
+ 300   2        }
+ 301   1        
+ 302   1        if(num > 65536)
+C51 COMPILER V9.55   LCD12864                                                              10/05/2019 19:24:19 PAGE 6   
+
+ 303   1        {
+ 304   2          Lcd12864_WriteString(x,y,"OverFlow");
+ 305   2          return 0;
+ 306   2        }
+ 307   1        
+ 308   1        for(j = 4; j >= 0; j --)
+ 309   1        {
+ 310   2          tmp_num[j] = num%10;
+ 311   2          num = num/10;
+ 312   2        }
+ 313   1        for(j = 0; j < 5; j ++)
+ 314   1        {
+ 315   2            if(tmp_num[j] == 0)
+ 316   2            {
+ 317   3              cnt = j+1;
+ 318   3            }
+ 319   2            else
+ 320   2              break;
+ 321   2        }
+ 322   1        y += 0xB0;     //求取Y坐标的值
+ 323   1        //--设置Y坐标--//
+ 324   1        Lcd_WriteCmd(y);
+ 325   1        for(wordNum = cnt; wordNum < 5; wordNum ++)
+ 326   1        {
+ 327   2        
+ 328   2          //--设置Y坐标--//
+ 329   2          Lcd_WriteCmd(y);
+ 330   2          x1 = (x >> 4) & 0x0F;   //由于X坐标要两句命令，分高低4位，所以这里先取出高4位
+ 331   2          x2 = x & 0x0F;          //去低四位
+ 332   2          //--设置X坐标--//
+ 333   2          Lcd_WriteCmd(0x10 + x1);   //高4位
+ 334   2          Lcd_WriteCmd(0x04 + x2);  //低4位
+ 335   2      
+ 336   2          for (j=0; j<16; j++) //写一个字
+ 337   2          {   
+ 338   3            if (j == 8)  //
+ 339   3            {
+ 340   4                //--设置Y坐标--//
+ 341   4              Lcd_WriteCmd(y + 1);
+ 342   4            
+ 343   4                //--设置X坐标--//
+ 344   4              Lcd_WriteCmd(0x10 + x1);   //高4位
+ 345   4              Lcd_WriteCmd(0x04 + x2);  //低4位
+ 346   4            }
+ 347   3              Lcd_WriteData(number[16*tmp_num[wordNum] +j]);
+ 348   3          }
+ 349   2          x += 8;   
+ 350   2        }
+ 351   1        return 1;
+ 352   1      }
+ 353          
+ 354          unsigned char PrintFloat(unsigned char x, unsigned char y, float num)
+ 355          {
+ 356   1        char temp_char[12];
+ 357   1        unsigned char i, res = 0;
+ 358   1        //--Y的坐标只能从0到7，大于则直接返回--//
+ 359   1        if(y > 7)
+ 360   1        {
+ 361   2          return 0;
+ 362   2        }
+ 363   1      
+ 364   1        //--X的坐标只能从0到128，大于则直接返回--//
+C51 COMPILER V9.55   LCD12864                                                              10/05/2019 19:24:19 PAGE 7   
+
+ 365   1        if(x > 128)
+ 366   1        {
+ 367   2          return 0;
+ 368   2        }
+ 369   1        sprintf(temp_char, "%.3f", num);
+ 370   1        Lcd12864_WriteString(x,y,temp_char);
+ 371   1        for(i = 0; i < 11; i ++)
+ 372   1        {
+ 373   2          if(temp_char[i] == '\0')
+ 374   2          {
+ 375   3            break;
+ 376   3          }
+ 377   2          else
+ 378   2            res += 8;
+ 379   2        }
+ 380   1        return res;
+ 381   1      }
+ 382          
+ 383          unsigned char PrintInteger(unsigned char x, unsigned char y, int num)
+ 384          {
+ 385   1        char temp_char[12];
+ 386   1        unsigned char i, res = 0;
+ 387   1        //--Y的坐标只能从0到7，大于则直接返回--//
+ 388   1        if(y > 7)
+ 389   1        {
+ 390   2          return 0;
+ 391   2        }
+ 392   1      
+ 393   1        //--X的坐标只能从0到128，大于则直接返回--//
+ 394   1        if(x > 128)
+ 395   1        {
+ 396   2          return 0;
+ 397   2        }
+ 398   1        sprintf(temp_char, "%d", num);
+ 399   1        Lcd12864_WriteString(x,y,temp_char);
+ 400   1        for(i = 0; i < 11; i ++)
+ 401   1        {
+ 402   2          if(temp_char[i] == '\0')
+ 403   2          {
+ 404   3            break;
+ 405   3          }
+ 406   2          else
+ 407   2            res += 8;
+ 408   2        }
+ 409   1        return res;
+ 410   1      }
+ 411          
+ 412          
+ 413          /*==========下面是LCD_print函数的编写===============*/
+ 414          
+ 415          //typedef char * va_list;
+ 416          //#define _INTSIZEOF(n)     ( (sizeof(n) + sizeof(int) - 1) & ~(sizeof(int) - 1) )
+ 417          //  
+ 418          //#define va_start(ap,v)   (ap = (va_list)&v + _INTSIZEOF(v))
+ 419          //#define va_arg(ap, t)    (*(t *)(ap = ap + __INTSIZEOF(t), ap - _INTSIZEOF(t)))
+ 420          //#define va_end(ap)           (ap = (va_list)0)
+ 421          
+ 422          static unsigned char my_vprintf(unsigned char row, const char *fmt, va_list ap)
+ 423          {
+ 424   1        char lead = ' ';
+ 425   1        int maxwidth = 0;
+ 426   1        unsigned char print_x = 0;
+C51 COMPILER V9.55   LCD12864                                                              10/05/2019 19:24:19 PAGE 8   
+
+ 427   1        unsigned char print_y = row *2; //坐标值
+ 428   1        for(; *fmt != '\0'; fmt ++)
+ 429   1        {
+ 430   2          if(*fmt != '%')
+ 431   2          {
+ 432   3            Lcd12864_Writechar(print_x, print_y, *fmt);
+ 433   3            print_x += 8;
+ 434   3            continue;
+ 435   3          }
+ 436   2          fmt ++;
+ 437   2          if(*fmt == '0')
+ 438   2          {
+ 439   3            lead = '0';
+ 440   3            fmt ++;
+ 441   3          }
+ 442   2          
+ 443   2          while(*fmt >= '0' && *fmt <= '9')
+ 444   2          {
+ 445   3            maxwidth *= 10;
+ 446   3            maxwidth += (*fmt - '0');
+ 447   3            fmt ++;
+ 448   3          }
+ 449   2          
+ 450   2          switch(*fmt)
+ 451   2          {
+ 452   3            case 'd': print_x +=PrintInteger(print_x, print_y, va_arg(ap,int)); break;
+ 453   3            case 'f': print_x +=PrintFloat(print_x, print_y,va_arg(ap, float));break;
+ 454   3            default:
+ 455   3              Lcd12864_Writechar(print_x, print_y, *fmt); break;
+ 456   3          }
+ 457   2            
+ 458   2        }
+ 459   1        return 0;
+ 460   1      }
+ 461          
+ 462          unsigned char LCD_print(unsigned char row, const char *fmt, ...)
+ 463          {
+ 464   1        va_list ap;
+ 465   1        
+ 466   1        va_start(ap, fmt);
+ 467   1        my_vprintf(row,fmt,ap);
+ 468   1        va_end(ap);
+ 469   1        return 0;
+ 470   1      }
+ 471          #endif
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1694    ----
+   CONSTANT SIZE    =   2411    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----      95
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
